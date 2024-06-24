@@ -1,7 +1,5 @@
 # youtube_dataharvest
 This project is designed to harvest and warehouse YouTube data using Python programming language, PostgreSQL, MongoDB, and Streamlit. The goal is to collect, store, and analyze YouTube data for various purposes such as content recommendation, trend analysis, and user behavior insights.
-
-**Tools Used** 
 **Python Programming Language**
 Python is used for its versatility, ease of use, and a rich ecosystem of libraries, making it suitable for web scraping, data processing, and analysis.
 
