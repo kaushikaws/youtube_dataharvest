@@ -165,13 +165,12 @@ def upload_channel_details(channel_id):
 # Streamlit cache clear
 st.cache_data.clear()
 # Streamlit sidebar
-with st.sidebar:
-    st.title(":blue[YOUTUBE DATA HARVESTING AND WAREHOUSING]")
+st.header(':red[YOUTUBE DATA HARVESTING AND WAREHOUSING]', divider='rainbow')  
 # Channel id input
-channel_ids = st.text_input("Enter the Channel IDs (comma separated)").split(',')
+channel_ids = st.text_input("Enter the Channel IDs (comma separated)",help="Please enter the YouTube channel IDs separated by commas.", placeholder="e.g., UC_x5XG1OV2P6uZZ5FSM9Ttw, UCJZv4d5rbIKd4QHMPkcABCw",label_visibility="visible").split(',')
 channel_ids = [ch.strip() for ch in channel_ids if ch]
 # Channel button 
-if st.button("Upload Channel Details"):
+if st.button("Upload Channel Details to MongoDB"):
     for channel_id in channel_ids:
         if channel_id:
             result = upload_channel_details(channel_id)
@@ -325,13 +324,24 @@ def comments_table():
     connection.commit()
     connection.close()
 
+def tables():
+    channels_table()
+    playlists_table()
+    videos_table()
+    comments_table()
+    st.write("Tables Created successfully")
+
+st.markdown("Create MYSQL Table",help="Click create Tables for RDS Mysql Tables if not created")
+if st.button("create Tables"):
+    tables()
+
 def migrate_to_mysql():
     channels_table()
     playlists_table()
     videos_table()
     comments_table()
     st.write("Migration Completed")
-
+st.markdown("Migration to AWS RDS  ",help="Migrating your local Mongodb Nosql datas to RDS Mysql")
 if st.button("Migrate to SQL"):
     migrate_to_mysql()
 
@@ -375,17 +385,18 @@ def show_comments_table():
     st.dataframe(df3)
     return df3
 
+with st.sidebar:
+    show_table = st.radio("SELECT THE TABLE FOR VIEW",(":green[channels]",":orange[playlists]",":red[videos]",":blue[comments]"))
 
-show_table = st.radio("SELECT THE TABLE FOR VIEW",(":green[channels]",":orange[playlists]",":red[videos]",":blue[comments]"))
-
+st.header(':violet[Details of Channels]', divider='rainbow')
 if show_table == ":green[channels]":
-    show_channels_table()
+        show_channels_table()
 elif show_table == ":orange[playlists]":
-    show_playlists_table()
+        show_playlists_table()
 elif show_table ==":red[videos]":
-    show_videos_table()
+        show_videos_table()
 elif show_table == ":blue[comments]":
-    show_comments_table()
+        show_comments_table()
 
 # For SQL query 
 connection = mysql.connector.connect(
@@ -396,8 +407,17 @@ connection = mysql.connector.connect(
         port=rds_port
     )
 cursor = connection.cursor()
-
-question=st.selectbox("Select your question",("1. All the videos and the channel name",
+with st.sidebar:
+    st.markdown(
+    """
+    <style>
+    .stRadio label, .stSelectbox label {
+        cursor: pointer;
+    }
+    </style>
+    """, unsafe_allow_html=True
+)
+    question=st.selectbox("Select your question",("1. All the videos and the channel name",
                                               "2. channels with most number of videos",
                                               "3. 10 most viewed videos",
                                               "4. comments in each videos",
@@ -407,6 +427,9 @@ question=st.selectbox("Select your question",("1. All the videos and the channel
                                               "8. videos published in the year of 2022",
                                               "9. average duration of all videos in each channel",
                                               "10. videos with highest number of comments"))
+
+st.header(':blue[Your Queries]', divider='rainbow')
+
 if question=="1. All the videos and the channel name":
     query1='''select title as videos,channel_name as channelname from videos'''
     cursor.execute(query1)
