@@ -62,25 +62,33 @@ def get_video_info(video_ids):
         response = request.execute()
 
         for item in response["items"]:
+            tags = item['snippet'].get('tags', [])
+            tags_str = ', '.join(tags)  # Convert list to comma-separated string
+            duration = item['contentDetails']['duration']
+            # Convert ISO 8601 duration format to HH:MM:SS
+            duration = duration.replace('PT', '').replace('H', ':').replace('M', ':').replace('S', '')
+
             data = dict(
                 Channel_Name=item['snippet']['channelTitle'],
                 Channel_Id=item['snippet']['channelId'],
                 Video_Id=item['id'],
                 Title=item['snippet']['title'],
-                Tags=item['snippet'].get('tags'),
+                Tags=tags_str,  # Store tags as a string
                 Thumbnail=item['snippet']['thumbnails']['default']['url'],
-                Description=item['snippet'].get('description'),
+                Description=item['snippet'].get('description', ''),
                 Published_Date=item['snippet']['publishedAt'],
-                Duration=item['contentDetails']['duration'],
-                Views=item['statistics'].get('viewCount'),
-                Likes=item['statistics'].get('likeCount'),
-                Comments=item['statistics'].get('commentCount'),
-                Favorite_Count=item['statistics']['favoriteCount'],
+                Duration=duration,  # Store duration as HH:MM:SS
+                Views=int(item['statistics'].get('viewCount', 0) or 0),  # Handle None by defaulting to 0
+                Likes=int(item['statistics'].get('likeCount', 0) or 0),  # Handle None by defaulting to 0
+                Comments=int(item['statistics'].get('commentCount', 0) or 0),  # Handle None by defaulting to 0
+                Favorite_Count=int(item['statistics'].get('favoriteCount', 0) or 0),  # Handle None by defaulting to 0
                 Definition=item['contentDetails']['definition'],
                 Caption_Status=item['contentDetails']['caption']
             )
             video_data.append(data)
     return video_data
+
+
 
 # Get comment info
 def get_comment_info(video_ids):
@@ -159,23 +167,23 @@ st.cache_data.clear()
 # Streamlit sidebar
 with st.sidebar:
     st.title(":blue[YOUTUBE DATA HARVESTING AND WAREHOUSING]")
-#channel id input
+# Channel id input
 channel_ids = st.text_input("Enter the Channel IDs (comma separated)").split(',')
 channel_ids = [ch.strip() for ch in channel_ids if ch]
-#channel button 
+# Channel button 
 if st.button("Upload Channel Details"):
     for channel_id in channel_ids:
         if channel_id:
             result = upload_channel_details(channel_id)
             if result:
                 st.success(result)
-#AWS RDS creds
+# AWS RDS creds
 rds_user = 'admin'
 rds_password = 'administrator'
 rds_host = 'database.cd6808ymyl01.ap-south-1.rds.amazonaws.com'
 rds_port = '3306'
 rds_db = 'youtube'
-# create RDS tables
+# Create RDS tables
 def channels_table():
     connection = mysql.connector.connect(
         host=rds_host,
@@ -250,7 +258,7 @@ def videos_table():
     )
     cursor = connection.cursor()
     try:
-        create_db_query_3 ='''create table if not exists videos(
+        create_db_query_3 = '''create table if not exists videos(
                         Channel_Name varchar(150),
                         Channel_Id varchar(100),
                         Video_Id varchar(50) primary key, 
@@ -263,9 +271,9 @@ def videos_table():
                         Views bigint, 
                         Likes bigint,
                         Comments int,
-                        Favorite_Count int, 
-                        Definition varchar(10), 
-                        Caption_Status varchar(50) 
+                        Favorite_Count int,
+                        Definition varchar(50),
+                        Caption_Status varchar(50)
                         )'''
         cursor.execute(create_db_query_3)
     except:
@@ -278,10 +286,12 @@ def videos_table():
             vi_list.append(vi_data["video_information"][i])
     df_3 = pd.DataFrame(vi_list)
     df_3['Tags'] = df_3['Tags'].apply(lambda x: ', '.join(x) if isinstance(x, list) else x)
+    
     engine = create_engine(f'mysql+mysqlconnector://{rds_user}:{rds_password}@{rds_host}/{rds_db}')
     df_3.to_sql(name='videos', con=engine, if_exists='replace', index=False)
     connection.commit()
     connection.close()
+
 
 def comments_table():
     connection = mysql.connector.connect(
@@ -293,13 +303,14 @@ def comments_table():
     )
     cursor = connection.cursor()
     try:
-        create_db_query4 = '''CREATE TABLE if not exists comments(Comment_Id varchar(100) primary key,
-                       Video_Id varchar(50),
-                       Comment_Text text, 
-                       Comment_Author varchar(150),
-                       Comment_Published timestamp)
-                       '''
-        cursor.execute(create_db_query4)
+        create_db_query_4 = '''create table if not exists comments(
+                        Comment_Id varchar(100) primary key,
+                        Video_Id varchar(100),
+                        Comment_Text text, 
+                        Comment_Author varchar(100), 
+                        Comment_Published_Date timestamp
+                        )'''
+        cursor.execute(create_db_query_4)
     except:
         st.write("comments table already created")
 
@@ -314,12 +325,16 @@ def comments_table():
     connection.commit()
     connection.close()
 
-def tables():
+def migrate_to_mysql():
     channels_table()
     playlists_table()
     videos_table()
     comments_table()
-    return "Tables Created successfully"
+    st.write("Migration Completed")
+
+if st.button("Migrate to SQL"):
+    migrate_to_mysql()
+
 # For showing output in UI
 def show_channels_table():
     ch_list = []
@@ -360,20 +375,18 @@ def show_comments_table():
     st.dataframe(df3)
     return df3
 
-# Streamlit main layout
-st.title("YouTube Data Harvesting and Warehousing")
 
-if st.button("Show Channel Details"):
+show_table = st.radio("SELECT THE TABLE FOR VIEW",(":green[channels]",":orange[playlists]",":red[videos]",":blue[comments]"))
+
+if show_table == ":green[channels]":
     show_channels_table()
-
-if st.button("Show Playlist Details"):
+elif show_table == ":orange[playlists]":
     show_playlists_table()
-
-if st.button("Show Video Details"):
+elif show_table ==":red[videos]":
     show_videos_table()
-
-if st.button("Show Comment Details"):
+elif show_table == ":blue[comments]":
     show_comments_table()
+
 # For SQL query 
 connection = mysql.connector.connect(
         host=rds_host,
