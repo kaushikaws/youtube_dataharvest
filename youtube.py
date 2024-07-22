@@ -225,13 +225,16 @@ def playlists_table():
     )
     cursor = connection.cursor()
     try:
-        create_db_query_2 = '''create table if not exists playlists(PlaylistId varchar(100) primary key,
-                        Title varchar(80), 
-                        ChannelId varchar(100), 
-                        ChannelName varchar(100),
-                        PublishedAt timestamp,
-                        VideoCount int
-                        )'''
+        create_db_query_2 = '''
+    CREATE TABLE IF NOT EXISTS playlists(
+    PlaylistId VARCHAR(80) PRIMARY KEY,
+    Title VARCHAR(80), 
+    ChannelId VARCHAR(100), 
+    ChannelName VARCHAR(100),
+    PublishedAt TIMESTAMP,
+    VideoCount INT
+);
+'''
         cursor.execute(create_db_query_2)
     except:
         st.write("playlists table already created")
@@ -324,16 +327,6 @@ def comments_table():
     connection.commit()
     connection.close()
 
-def tables():
-    channels_table()
-    playlists_table()
-    videos_table()
-    comments_table()
-    st.write("Tables Created successfully")
-
-st.markdown("Create MYSQL Table",help="Click create Tables for RDS Mysql Tables if not created")
-if st.button("create Tables"):
-    tables()
 
 def migrate_to_mysql():
     channels_table()
